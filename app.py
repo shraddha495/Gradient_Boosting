@@ -116,7 +116,7 @@ st.markdown("""
 
 # Header Section
 st.markdown("<h1>⚡ Gradient Boosting Portal</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Advanced Machine Learning Inference Engine</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Advanced Binary Classification Inference Engine</p>", unsafe_allow_html=True)
 
 # Robust Model Loader
 @st.cache_resource
@@ -128,7 +128,7 @@ def load_model():
         with open(model_path, 'rb') as f:
             return pickle.load(f), True  # Real Model Loaded
     else:
-        # Smart dynamic fallback model if pkl is missing
+        # Fallback binary model if pkl is missing
         X_dummy = np.array([[25, 0, 2, 1], [40, 1, 0, 2]])
         y_dummy = np.array([0, 1])
         model = GradientBoostingClassifier()
@@ -163,8 +163,7 @@ if submit_button:
         time.sleep(0.5)
         
         try:
-            # 🔑 CRITICAL FIX: Convert text selections into numbers matching your model training format
-            # Adjust these mapping numbers if your model was trained with different numeric encodings
+            # Numeric encoding mappings matching typical training sets
             gender_map = {"Male": 0, "Female": 1, "Other": 2}
             review_map = {"Negative": 0, "Neutral": 1, "Positive": 2}
             education_map = {"High School": 0, "Bachelor": 1, "Master": 2, "PhD": 3}
@@ -176,8 +175,14 @@ if submit_button:
             # Construct strict numeric array for prediction
             features = np.array([[float(age), float(g_val), float(r_val), float(e_val)]])
             
-            # Predict outcome
-            prediction = model.predict(features)[0]
+            # Predict binary outcome (0 or 1)
+            raw_prediction = model.predict(features)[0]
+            
+            # Format 0/1 or Yes/No nicely for user readability
+            if str(raw_prediction) in ["1", "True", "Yes"]:
+                formatted_result = "Yes (Class 1)"
+            else:
+                formatted_result = "No (Class 0)"
             
             # Trigger Celebration Balloons 🎉
             st.balloons()
@@ -185,15 +190,15 @@ if submit_button:
             # Display Styled Result Card
             st.markdown(f"""
                 <div class="success-card">
-                    <h4 style="color: #276749; margin-bottom: 5px; font-weight: 600;">Prediction Result Successful</h4>
-                    <h2 style="color: #22543d; font-size: 32px; font-weight: 800;">{prediction}</h2>
+                    <h4 style="color: #276749; margin-bottom: 5px; font-weight: 600;">Prediction Outcome</h4>
+                    <h2 style="color: #22543d; font-size: 32px; font-weight: 800;">{formatted_result}</h2>
                 </div>
             """, unsafe_allow_html=True)
             
             # Live Debug Info Viewer
             st.markdown(f"""
                 <div class="debug-box">
-                    <b>🔍 Numeric Array Sent to Model:</b> {features.tolist()}
+                    <b>🔍 Numeric Array Sent to Model:</b> {features.tolist()} | <b>Raw Output:</b> {raw_prediction}
                 </div>
             """, unsafe_allow_html=True)
             
