@@ -128,13 +128,11 @@ def load_model():
         with open(model_path, 'rb') as f:
             return pickle.load(f), True  # Real Model Loaded
     else:
-        # Smart dynamic fallback model (accepts strings or numbers safely)
-        X_dummy = np.array([[25, "Male", "Positive", "Bachelor"], [40, "Female", "Negative", "Master"]], dtype=object)
+        # Smart dynamic fallback model if pkl is missing
+        X_dummy = np.array([[25, 0, 2, 1], [40, 1, 0, 2]])
         y_dummy = np.array([0, 1])
         model = GradientBoostingClassifier()
-        # Fallback model trained on dummy numeric mapping for safe demo
-        X_numeric = np.array([[25, 0, 2, 1], [40, 1, 0, 2]])
-        model.fit(X_numeric, y_dummy)
+        model.fit(X_dummy, y_dummy)
         return model, False  # Fallback Mode
 
 model, is_real_model = load_model()
@@ -161,25 +159,27 @@ with st.form("prediction_form"):
     submit_button = st.form_submit_button(label="🔮 Run Prediction Model")
 
 if submit_button:
-    # High-tech loading spinner effect
     with st.spinner("Analyzing data patterns with Gradient Boosting..."):
-        time.sleep(0.8) # Simulate fast processing animation
+        time.sleep(0.5)
         
         try:
-            if is_real_model:
-                # Pass raw strings directly (standard if your model uses a scikit-learn Pipeline with preprocessors)
-                features = np.array([[age, gender, review, education]], dtype=object)
-            else:
-                # Fallback numeric conversion mapping
-                gender_map = {"Male": 0, "Female": 1, "Other": 2}
-                review_map = {"Negative": 0, "Neutral": 1, "Positive": 2}
-                edu_map = {"High School": 0, "Bachelor": 1, "Master": 2, "PhD": 3}
-                features = np.array([[age, gender_map.get(gender, 0), review_map.get(review, 1), edu_map.get(education, 1)]])
+            # 🔑 CRITICAL FIX: Convert text selections into numbers matching your model training format
+            # Adjust these mapping numbers if your model was trained with different numeric encodings
+            gender_map = {"Male": 0, "Female": 1, "Other": 2}
+            review_map = {"Negative": 0, "Neutral": 1, "Positive": 2}
+            education_map = {"High School": 0, "Bachelor": 1, "Master": 2, "PhD": 3}
+            
+            g_val = gender_map.get(gender, 0)
+            r_val = review_map.get(review, 1)
+            e_val = education_map.get(education, 1)
+            
+            # Construct strict numeric array for prediction
+            features = np.array([[float(age), float(g_val), float(r_val), float(e_val)]])
             
             # Predict outcome
             prediction = model.predict(features)[0]
             
-            # Trigger Celebration Balloons Effect 🎉
+            # Trigger Celebration Balloons 🎉
             st.balloons()
             
             # Display Styled Result Card
@@ -193,9 +193,9 @@ if submit_button:
             # Live Debug Info Viewer
             st.markdown(f"""
                 <div class="debug-box">
-                    <b>🔍 Real-Time Input Vector Sent:</b> {features.tolist()}
+                    <b>🔍 Numeric Array Sent to Model:</b> {features.tolist()}
                 </div>
             """, unsafe_allow_html=True)
             
         except Exception as e:
-            st.error(f"Prediction Error: {e}. (Hint: Ensure your trained model input format matches strings or numbers accordingly).")
+            st.error(f"Prediction Error: {e}")
