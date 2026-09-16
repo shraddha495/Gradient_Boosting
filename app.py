@@ -11,10 +11,9 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS for Background Effects, Glassmorphism, and Shadows
+# Custom Styling
 st.markdown("""
     <style>
-        /* Animated Gradient Background */
         .stApp {
             background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
             background-size: 400% 400%;
@@ -25,35 +24,17 @@ st.markdown("""
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
-        /* Glassmorphism Main Container */
         .block-container {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.90);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border-radius: 20px;
             padding: 40px !important;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
             margin-top: 5vh;
             margin-bottom: 5vh;
         }
-
-        /* Typography & Headers */
-        h1 {
-            color: #1a202c;
-            text-align: center;
-            font-weight: 800;
-            letter-spacing: -1px;
-            margin-bottom: 10px;
-        }
-        p.subtitle {
-            text-align: center;
-            color: #4a5568;
-            font-size: 16px;
-            margin-bottom: 30px;
-        }
-
-        /* Form Elements Styling */
+        h1 { color: #1a202c; text-align: center; font-weight: 800; }
+        p.subtitle { text-align: center; color: #4a5568; font-size: 16px; margin-bottom: 25px; }
         div.stButton > button {
             width: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -63,15 +44,7 @@ st.markdown("""
             padding: 12px;
             border: none;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-            transition: all 0.3s ease;
         }
-        div.stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-            background: linear-gradient(135deg, #5a6fe0 0%, #684092 100%);
-        }
-
-        /* Success / Result Card Box Shadow */
         .success-box {
             background: #f0fff4;
             border: 1px solid #9ae6b4;
@@ -81,35 +54,47 @@ st.markdown("""
             text-align: center;
             margin-top: 20px;
         }
+        .debug-box {
+            background: #edf2f7;
+            border-left: 4px solid #4a5568;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# Header Section
 st.markdown("<h1>✨ Prediction Portal</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Powered by Gradient Boosting & Machine Learning</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Gradient Boosting Interactive Model</p>", unsafe_allow_html=True)
 
-# Robust Auto-Healing Model Loader
+# Model Loader with Status Detection
 @st.cache_resource
-def load_Or_create_model():
+def load_model():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     model_path = os.path.join(base_dir, 'gradientboosting.pkl')
     
-    if not os.path.exists(model_path):
-        # Auto-generate fallback model so the app never breaks
-        X_dummy = np.array([[25, 0, 2, 1], [40, 1, 0, 2], [35, 0, 1, 3], [50, 1, 2, 0]])
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as f:
+            return pickle.load(f), True  # True = Real Model
+    else:
+        # Create a smarter fallback model where outputs dynamically change based on input math
+        X_dummy = np.array([[10, 0, 0, 0], [50, 1, 1, 1], [30, 2, 2, 2], [70, 0, 1, 3]])
         y_dummy = np.array([0, 1, 0, 1])
         model = GradientBoostingClassifier()
         model.fit(X_dummy, y_dummy)
-        
-        with open(model_path, 'wb') as f:
-            pickle.dump(model, f)
-            
-    with open(model_path, 'rb') as f:
-        return pickle.load(f)
+        return model, False  # False = Fallback Mode
 
-model = load_Or_create_model()
+model, is_real_model = load_model()
 
-# Elegant Form Layout
+# Status notification banner
+if is_real_model:
+    st.success("✅ Connected to your **Real Model (`gradientboosting.pkl`)**")
+else:
+    st.warning("⚠️ Running on **Fallback Mode**. Upload `gradientboosting.pkl` to GitHub to use your actual model.")
+
+# Input Form
 with st.form("prediction_form"):
     col1, col2 = st.columns(2)
     
@@ -124,9 +109,9 @@ with st.form("prediction_form"):
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
     submit_button = st.form_submit_button(label="Generate Prediction 🚀")
 
-# Prediction Handler
 if submit_button:
     try:
+        # Encoding categorical choices to numeric
         gender_map = {"Male": 0, "Female": 1, "Other": 2}
         review_map = {"Negative": 0, "Neutral": 1, "Positive": 2}
         edu_map = {"High School": 0, "Bachelor": 1, "Master": 2, "PhD": 3}
@@ -135,14 +120,25 @@ if submit_button:
         r_val = review_map.get(review, 1)
         e_val = edu_map.get(education, 1)
         
+        # Prepare feature array
         features = np.array([[age, g_val, r_val, e_val]])
+        
+        # Make prediction
         prediction = model.predict(features)[0]
         
-        # Display Styled Result Card
+        # Display Result
         st.markdown(f"""
             <div class="success-box">
                 <h4 style="color: #276749; margin-bottom: 5px;">Predicted Outcome</h4>
                 <h2 style="color: #22543d; font-size: 28px;">{prediction}</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Debug view to prove inputs are changing
+        st.markdown(f"""
+            <div class="debug-box">
+                <b>🔍 Debug Info Sent to Model:</b><br>
+                Features Array: {features.tolist()}
             </div>
         """, unsafe_allow_html=True)
         
